@@ -1,4 +1,4 @@
 [S-expressions] [1] (or sexps) are the minimal syntax of Lisp and Scheme. Here
 are some tools for parsing and manipulating them in SML.
 
-[1]: http://en.wikipedia.org/wiki/S-expression
+  [1]: http://en.wikipedia.org/wiki/S-expression
