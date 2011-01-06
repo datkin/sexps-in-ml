@@ -39,10 +39,6 @@ structure Patterns = struct
   fun isEllipsis (Ast.Id id) = id = Id.id "..."
     | isEllipsis _ = false
 
-                     (*
-  type pattern_info = {pattern: pattern, binders: Id.IdSet.set}
-                      *)
-
   (**
    * Creates a pattern value given it's sexp representation. All
    * indentifiers in the pattern definition are treated as binders
@@ -62,7 +58,7 @@ structure Patterns = struct
      * inspected two at a time, looking for a sequence ("x ...") or a
      * dotted tail (". x"). Until a sequence is found, all patterns
      * are accumulated in the second argument, and the third argument
-     * is NONE. Once a sequence has been found, the third argument
+     * is NONE. Once a sequence has been found the third argument
      * stores a tuple of the sequenced pattern, and all patterns in
      * the list after the sequence.
      *)
@@ -99,8 +95,3 @@ structure Patterns = struct
     | Ast.Sexp exps => (makePatternList (exps, [], NONE))
   end
 end
-  (*   At most one pattern inside a list may be
-       followed by an ellipsis indicating a "sequence" that should be
-       greedily matched zero or more times. If a list has no
-       sequences, it may end with a . and a binder indicating the
-       remainder of the input form should be bound to the binder. *)
