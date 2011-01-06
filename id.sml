@@ -27,13 +27,12 @@ structure Id = struct
         SOME name => name
       | NONE => raise Fail "No such symbol"
 
-  fun dump (idmap, toStr) =
-    let
-      val idStrings = (map (fn (id, item) =>
+  fun dump (idmap, toStr) = let
+    val idStrings = (map (fn (id, item) =>
                              (name id) ^ ": " ^ (toStr item))
-                           (IdMap.listItemsi idmap))
-    in
-      print (String.concatWith ", " idStrings);
-      print "\n"
-    end
+                         (IdMap.listItemsi idmap))
+  in
+    print (String.concatWith ", " idStrings);
+    print "\n"
+  end
 end
