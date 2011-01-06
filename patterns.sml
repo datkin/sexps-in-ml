@@ -64,7 +64,6 @@ structure Patterns = struct
    * Creates a pattern value given it's sexp representation. All
    * indentifiers in the pattern definition are treated as binders
    * unless they're given in the list of literals.
-   *
    *)
   fun fromSexp (form, literals) = let
     fun isLiteral id = List.exists (fn id' => id = id') literals
@@ -165,23 +164,11 @@ structure Patterns = struct
         "Expected " ^ patternStr ^ ", got " ^ astStr
       end
 
-  exception NoMatch
-
-  fun match (PLiteral literal, ast) =
-      let
-        fun match (literal, expected, actual) =
-            if expected = actual then
-              MLiteral literal
-            else
-              raise NoMatch
-      in
-        (case (literal, ast) of
-           (String str, Ast.String str') => match (literal, str, str')
-         | (Num num, Ast.Num num') => match (literal, num, num')
-         | (Id id, Ast.Id id') => match (literal, id, id')
-         | (_, _) => raise NoMatch)
-        handle NoMatch => raise Fail (diffString (PLiteral literal, ast))
-      end
+  fun match (pattern as PLiteral literal, ast) =
+      if (toSexp pattern) = ast then
+        MLiteral literal
+      else
+        raise Fail (diffString (pattern, ast))
     | match (PVar id, ast) = MVar (id, ast)
     | match _ = MList ([], MEnd)
 
