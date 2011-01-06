@@ -94,4 +94,35 @@ structure Patterns = struct
     | Ast.String string => PLiteral (String string)
     | Ast.Sexp exps => (makePatternList (exps, [], NONE))
   end
+
+  (**
+   * Collect all the binding variables in a pattern and create a map
+   * from the binder to it's binding level. The binding level is how
+   * many sequences a binder is nested inside of. For example, this
+   * pattern:
+   *   (a (b) c ... (((d ...) ...) ...))
+   * has the following map:
+   *   a: 0, b: 0, c: 1, d: 3
+   *
+   * If a binder occurs more than once in the pattern, an exception is
+   * raised.
+   *)
+  fun getBinderLevels (PVar id, levels, level) =
+      (case Id.IdMap.find (levels, id) of
+         NONE => Id.IdMap.insert (levels, id, level)
+       | SOME _ => raise Fail (Id.name id ^ " already defined in pattern."))
+    | getBinderLevels (PList (patterns, tail), levels, level) = let
+        val collectLevels = foldr (fn (pattern, levels') =>
+                                      getBinderLevels (pattern, levels', level))
+        val levels' = collectLevels levels patterns
+        val levels'' = case tail of
+                         PSeq (seq, tailPatterns) => collectLevels (getBinderLevels (seq, levels', level + 1))
+                                                                   tailPatterns
+                       | PRest id => getBinderLevels (PVar id, levels', level)
+                       | PEnd => levels'
+      in
+        levels''
+      end
+    | getBinderLevels (PLiteral _, levels, level) = levels
+
 end
