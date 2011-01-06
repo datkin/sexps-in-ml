@@ -1,7 +1,7 @@
 structure Parser = struct
   structure SexpParser = SexpParseFn(Lexer)
 
-  datatype result = Success of AST.exp list
+  datatype result = Success of Ast.exp list
                   | Failure
 
   fun parse input =

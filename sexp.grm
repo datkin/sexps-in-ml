@@ -1,7 +1,7 @@
 %name Sexp;
 
 %defs (
-  open AST
+  open Ast
 );
 
 %tokens : ID of string

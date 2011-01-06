@@ -1,4 +1,4 @@
-structure AST = struct
+structure Ast = struct
   datatype num = Int of LargeInt.int (* Arbitrary precision integer *)
                (* Floating point number represented as x * 10^-y *)
                | Float of (LargeInt.int * LargeInt.int)
