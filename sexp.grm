@@ -1,0 +1,43 @@
+%name Sexp;
+
+%defs (
+  open AST
+);
+
+%tokens : ID of string
+        | INT of LargeInt.int
+        | STRING of string
+        | FLOAT of (LargeInt.int * LargeInt.int)
+        | RATIONAL of (LargeInt.int * LargeInt.int)
+        | LPAREN
+        | RPAREN
+        | LBRACK
+        | RBRACK
+        | QUOTE
+        | QUASIQUOTE
+        | UNQUOTE
+        | COMMENT (* #; *)
+        (* ml-antlr bug: antlr always emits a _ case when matching
+         * tokens, so we need a token not matched by our grammar. *)
+        | UNUSED;
+
+%start prog;
+
+prog : explist;
+
+explist : => ([])
+        | COMMENT exp explist => (explist)
+        | exp explist => (exp :: explist);
+
+exp : LPAREN explist RPAREN => (Sexp (explist))
+    | LBRACK explist RBRACK => (Sexp (explist))
+    | ID => (Id (Id.id ID))
+    | num => (Num (num))
+    | STRING => (String (STRING))
+    | QUOTE exp => (Sexp ([Id (Id.id "quote"), exp]))
+    | QUASIQUOTE exp => (Sexp ([Id (Id.id "quasiquote"), exp]))
+    | UNQUOTE exp => (Sexp ([Id (Id.id "unquote"), exp]));
+
+num : INT => (Int INT)
+    | FLOAT => (Float FLOAT)
+    | RATIONAL => (Rational RATIONAL);
