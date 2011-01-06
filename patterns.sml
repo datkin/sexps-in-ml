@@ -56,27 +56,30 @@ structure Patterns = struct
 
     fun toPattern form = makePattern (form, literals)
 
-    fun makePatternList (patterns, exp1 :: exp2 :: rest, NONE) =
+    (**
+     * 
+     *)
+    fun makePatternList (exp1 :: exp2 :: rest, patterns, NONE) =
         if isDot exp1 then
           case (toPattern exp2, rest) of
             (PVar id, []) => PList (patterns, PRest id)
           | (_, []) => raise Fail "A '.' must be followed by a bind variable."
           | (_, _) => raise Fail "Only one pattern allowed after '.'."
         else if isEllipsis exp2 then
-          makePatternList (patterns, rest, SOME (toPattern exp1, []))
+          makePatternList (rest, patterns, SOME (toPattern exp1, []))
         else
-          makePatternList (patterns @ [toPattern exp1], exp2 :: rest, NONE)
-      | makePatternList (patterns, exp1 :: exp2 :: rest, SOME (seq, tailPatterns)) =
+          makePatternList (exp2 :: rest, patterns @ [toPattern exp1], NONE)
+      | makePatternList (exp1 :: exp2 :: rest, patterns, SOME (seq, tailPatterns)) =
         if isDot exp1 then
           raise Fail "A '.' is not allowed after '...'."
         else if isEllipsis exp2 then
           raise Fail "Only one sequence allowed per list."
         else
-          makePatternList (patterns, exp2 :: rest, SOME (seq, tailPatterns @ [toPattern exp1]))
+          makePatternList (exp2 :: rest, patterns, SOME (seq, tailPatterns @ [toPattern exp1]))
       (* The next two cases are only used lists of length < 2 *)
-      | makePatternList (patterns, exps, NONE) =
+      | makePatternList (exps, patterns, NONE) =
         PList (patterns @ (map toPattern exps), PEnd)
-      | makePatternList (patterns, exps, SOME (seq, tailPatterns)) =
+      | makePatternList (exps, patterns, SOME (seq, tailPatterns)) =
         PList (patterns, PSeq (seq, tailPatterns @ (map toPattern exps)))
   in
     case form of
@@ -86,7 +89,7 @@ structure Patterns = struct
                      PVar id
     | Ast.Num num => PLiteral (Num num)
     | Ast.String string => PLiteral (String string)
-    | Ast.Sexp exps => (makePatternList ([], exps, NONE))
+    | Ast.Sexp exps => (makePatternList (exps, [], NONE))
   end
 end
   (*   At most one pattern inside a list may be
