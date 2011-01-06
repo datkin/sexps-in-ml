@@ -57,7 +57,14 @@ structure Patterns = struct
     fun toPattern form = makePattern (form, literals)
 
     (**
-     * 
+     * Consumes a list of sexp pattern represenations, and converts
+     * them into patterns to create a PList. The list of sexps is
+     * inspected two at a time, looking for a sequence ("x ...") or a
+     * dotted tail (". x"). Until a sequence is found, all patterns
+     * are accumulated in the second argument, and the third argument
+     * is NONE. Once a sequence has been found, the third argument
+     * stores a tuple of the sequenced pattern, and all patterns in
+     * the list after the sequence.
      *)
     fun makePatternList (exp1 :: exp2 :: rest, patterns, NONE) =
         if isDot exp1 then
