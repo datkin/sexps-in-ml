@@ -221,14 +221,31 @@ structure Pattern = struct
     | match pattern ast = raise Fail (diffString (pattern, ast))
 end
 
+(*
+ Validate:
+  (1) every variable must be nested deeply enough.
+      Accomplish this by counting the depth as we nest.
+  (2) sequenced templates may not be nested more deeply than nest more deeply than their deepest used variable
+      Accomplish this by comparing the nest of the deepest variable with the depth
+
+ ((a ...) (b ...))
+ legal: ((a b) ...)
+ illegal: (a b ...), ((a b) ... ...)
+
+ (a b ...)
+ legal: ((a b) ...)
+
+ *)
+
 structure Template = struct
   open Pattern
 
   datatype template = TList of titem list
                     | TVar of Id.id
                     | TLiteral of literal
-       and titem = TMany of titem * Id.IdSet.set
-                 | TOne of template
+                     (* Each template in a list may be nested in arbitrarily deep sequences... *)
+       and titem = TSequence of titem (* I did these as nested TMany's before... hrmm *)
+                 | TSingleton of template
 
   (* Generate an error for a template variable not nested within
    * enough sequences. *)
@@ -258,7 +275,61 @@ structure Template = struct
            else
              raise shallowNestingError (id, required_depth, current_depth)
          | NONE => TLiteral (Id id))
-      | fromSexp' (Ast.Sexp exps, current_depth) = TList []
+      | fromSexp' (Ast.Sexp exps, current_depth) = let
+          (*
+           * Sequences must always be nested in a pattern, but they
+           * may be flattened in a template. Eg, the following
+           * pattern:
+           *   ((a ...) ...)
+           * could have this template:
+           *   (a ... ...)
+           * represented as:
+           *   TMany (TMany (TOne (Id.id "a")))
+           * We cannot be sure a's use in the template is legal until
+           * we know how many sequences it's bound by. Therefore, as
+           * we parse the each expression in a list, we delay its
+           * evaluation until we know how many sequences it's bound
+           * by. *)
+
+          (* Don't parse this template until we know how many
+           * sequences it's bound by in this list. *)
+          fun delay exp depth = TSingleton (fromSexp' (exp, current_depth + depth))
+          (* For each ellipsis following the expression, wrap its
+           * template in a "TMany", and increment the depth of the
+           * environment in which it will be evaluated. *)
+          fun delayAgain delayedItem depth = TSequence (delayedItem (depth + 1))
+          fun eval delayedItem = delayedItem 0
+
+          (* Pull expressions from the list one at a time... *)
+          (* Unless the expression is an ellipsis, wrap it with a
+           * "TOne", but defer parsing it. Continue down the list
+           * consuming as many ellipses as possible. For each
+           * ellipsis, wrap the deferred expression. Once a
+           * non-ellipsis is encountered, parse the deferred
+           * expression, and repeat the process with the new
+           * expression. *)
+          (* Process the list of expressions from left to right. For
+           * each expression, delay it, and continue to consume as
+           * many "..."s as possible. For each "...", wrap the
+           * expression in another delay previous expression in a
+           * "Many" template. When there are no more "..."s, parse the
+           * expression at the known binding depth), and continue on
+           * down the list. *)
+          fun itemsFromSexps (SOME delayedItem, nextExp :: rest) =
+              if isEllipsis nextExp then
+                itemsFromSexps (SOME (delayAgain delayedItem), rest)
+              else
+                eval delayedItem :: itemsFromSexps (SOME (delay nextExp), rest)
+            | itemsFromSexps (NONE, nextExp :: rest) =
+              if isEllipsis nextExp then
+                raise Fail "'...' must follow a template."
+              else
+                itemsFromSexps (SOME (delay nextExp), rest)
+            | itemsFromSexps (SOME delayedItem, []) = [eval delayedItem]
+            | itemsFromSexps (NONE, []) = []
+        in
+          TList (itemsFromSexps (NONE, exps))
+        end
   in
     fromSexp' (ast, 0)
   end
