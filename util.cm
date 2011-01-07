@@ -2,5 +2,6 @@ Group is
 
 base.cm
 parse.cm
+util.sml
 patterns.sml
 $/basis.cm

@@ -3,7 +3,7 @@
  * transforming patterns of s-expressions. Patterns is a similar tool
  * for parsing syntax-rules style definitions from S-expressions to
  * generate rewrite rules, and then applying those rules. *)
-structure Patterns = struct
+structure Pattern = struct
 
   (* Pattern elements that should be matched literally. *)
   datatype literal = Id of Id.id
@@ -153,7 +153,7 @@ structure Patterns = struct
                  | MVar of Id.id * Ast.exp
                  | MLiteral of literal
        and mtail = MSeq of match list * match list
-                 | MRest of match
+                 | MRest of Id.id * Ast.exp
                  | MEnd
 
   fun diffString (pattern, ast) =
@@ -164,12 +164,42 @@ structure Patterns = struct
         "Expected " ^ patternStr ^ ", got " ^ astStr
       end
 
-  fun match (pattern as PLiteral literal, ast) =
+  (**
+   * Attempt to match the given pattern against the given
+   * S-expression. Returns a match instantiating the pattern if
+   * successful, raises an exception otherwise.
+   *)
+  fun match (PVar id) ast = MVar (id, ast)
+    | match (pattern as PLiteral literal) ast =
       if (toSexp pattern) = ast then
         MLiteral literal
       else
         raise Fail (diffString (pattern, ast))
-    | match (PVar id, ast) = MVar (id, ast)
-    | match _ = MList ([], MEnd)
+    | match (PList (patterns, tail)) (Ast.Sexp exps) =
+      let
+        fun matchList (patterns, exps) =
+            ListPair.foldlEq (fn (pattern, exp, matches) =>
+                                 match pattern exp :: matches)
+                             []
+                             (patterns, exps)
 
+        fun matchTail (PSeq (seq, tailPatterns), exps) =
+            let
+              val (headExps, tailExps) = Util.splitTail (length tailPatterns) exps
+              val headMatches = (map (match seq) headExps)
+              val tailMatches = matchList (tailPatterns, tailExps)
+            in
+              MSeq (headMatches, tailMatches)
+            end
+          | matchTail (PRest id, exps) = MRest (id, Ast.Sexp exps)
+          | matchTail (PEnd, []) = MEnd
+          | matchTail (_, _) = raise Fail "Couldn't match the tail of the list."
+
+        (* Split the expression list based on where the sequence or
+         * dot (if any) appears in the pattern. *)
+        val (headExps, tailExps) = Util.splitHead (length patterns) exps
+      in
+        MList (matchList (patterns, headExps), matchTail (tail, tailExps))
+      end
+    | match pattern ast = raise Fail (diffString (pattern, ast))
 end
