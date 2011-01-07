@@ -203,3 +203,47 @@ structure Pattern = struct
       end
     | match pattern ast = raise Fail (diffString (pattern, ast))
 end
+
+structure Template = struct
+  open Pattern
+
+  datatype template = TList of titem list
+                    | TVar of Id.id
+                    | TLiteral of literal
+       and titem = TMany of titem * Id.IdSet.set
+                 | TOne of template
+
+  (* Generate an error for a template variable not nested within
+   * enough sequences. *)
+  fun shallowNestingError (id, required_depth, actual_depth) =
+      Fail (Id.name id ^ " must be nested in at least " ^ Int.toString
+            required_depth ^ " sequences, but it's nested in " ^
+            Int.toString actual_depth ^ " sequences.")
+
+  (**
+   * Create a template for a pattern, given the binding depths for
+   * variables in the pattern, and an s-expression representation of
+   * the template.
+   *)
+  fun fromSexp binderDepths ast = let
+    fun fromSexp' (Ast.Num num, _) = TLiteral (Num num)
+      | fromSexp' (Ast.String str, _) = TLiteral (String str)
+      | fromSexp' (Ast.Id id, current_depth) =
+        (* If an identifier appears in the binder depths map, it's a
+         * variable, otherwise it's a literal.  If a variable is
+         * nested within n sequences in a pattern, it must appear
+         * nested within at least n sequences in the corresponding
+         * template. *)
+        (case Id.IdMap.find (binderDepths, id) of
+           SOME required_depth =>
+           if required_depth <= current_depth then
+             TVar id
+           else
+             raise shallowNestingError (id, required_depth, current_depth)
+         | NONE => TLiteral (Id id))
+      | fromSexp' (Ast.Sexp exps, current_depth) = TList []
+  in
+    fromSexp' (ast, 0)
+  end
+
+end
