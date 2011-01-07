@@ -221,30 +221,31 @@ structure Pattern = struct
     | match pattern ast = raise Fail (diffString (pattern, ast))
 end
 
-(*
- Validate:
-  (1) every variable must be nested deeply enough.
-      Accomplish this by counting the depth as we nest.
-  (2) sequenced templates may not be nested more deeply than nest more deeply than their deepest used variable
-      Accomplish this by comparing the nest of the deepest variable with the depth
-
- ((a ...) (b ...))
- legal: ((a b) ...)
- illegal: (a b ...), ((a b) ... ...)
-
- (a b ...)
- legal: ((a b) ...)
-
- *)
-
 structure Template = struct
   open Pattern
 
   datatype template = TList of titem list
                     | TVar of Id.id
                     | TLiteral of literal
-                     (* Each template in a list may be nested in arbitrarily deep sequences... *)
-       and titem = TSequence of titem (* I did these as nested TMany's before... hrmm *)
+ (**
+  * In a pattern, there may be only one sequence per list, so nested
+  * sequences are always lexically nested as well. In a templates
+  * however, nested sequences may be lexically flattened. For example,
+  * this pattern:
+  *   (a (b ...) (c ...) ...)
+  * could have this template:
+  *   (a b ... c ... ...)
+  * which would expand, e.g., like this:
+  *   (1 () (2 3) (4 5 6)) -> (1 2 3 4 5 6)
+  * Thus, every template in a list is wrapped in a "TSingleton" item,
+  * and for every sequence immediately following the template, the
+  * singleton is wrapped in a "TSequence". So the example above would
+  * be:
+  *   TList [TSingleton (Id.id "a"),
+  *          TSequence (TSingleton (Id.id "b")),
+  *          TSequence (TSequence (TSingleton (Id.id "c")))]
+  *)
+       and titem = TSequence of titem
                  | TSingleton of template
 
   (* Generate an error for a template variable not nested within
@@ -293,5 +294,34 @@ structure Template = struct
         in
           TList (itemsFromSexps (NONE, exps))
         end
+
+  (**
+   * There are two properties of templates that must be validated.
+   * (1) Every variable must be nested at least as deeply as it
+   *     appears in the corresponding pattern. Consider this pattern:
+   *       ((a ...) (b ...))
+   *     This template would be invalid because 'a' isn't nested:
+   *       (a b ...)
+   * (2) Sequenced templates cannot be nested more deeply than the
+   *     deepest variable they contain. For the above pattern, this
+   *     template is invalid, because 'a' and 'b' are sequenced twice
+   *     but they are both only depth one:
+   *       ((a b) ... ...)
+   *
+   * Note that it's valid for more shallow variables to appear as
+   * deeply nested variables as the deepest variables. For instance,
+   * this pattern:
+   *   (a b ...)
+   * may have the following template:
+   *   ((a b) ...)
+   *
+   * Property (1) is checked by comparing every variable's binding
+   * depth with the depth of it's appearance in the template.
+   *
+   * Property (2) is checked by ???
+   *)
+  fun validate (template, binders, depth) = NONE
+
+  fun makeTemplate (sexp, binderDepths) = {template = fromSexp binderDepths sexp}
 
 end
