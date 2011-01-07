@@ -259,79 +259,39 @@ structure Template = struct
    * variables in the pattern, and an s-expression representation of
    * the template.
    *)
-  fun fromSexp binderDepths ast = let
-    fun fromSexp' (Ast.Num num, _) = TLiteral (Num num)
-      | fromSexp' (Ast.String str, _) = TLiteral (String str)
-      | fromSexp' (Ast.Id id, current_depth) =
+  fun fromSexp binderDepths ast =
+      case ast of
+        Ast.Num num => TLiteral (Num num)
+      | Ast.String str => TLiteral (String str)
+      | Ast.Id id =>
         (* If an identifier appears in the binder depths map, it's a
-         * variable, otherwise it's a literal.  If a variable is
-         * nested within n sequences in a pattern, it must appear
-         * nested within at least n sequences in the corresponding
-         * template. *)
+         * variable, otherwise it's a literal. *)
         (case Id.IdMap.find (binderDepths, id) of
-           SOME required_depth =>
-           if required_depth <= current_depth then
-             TVar id
-           else
-             raise shallowNestingError (id, required_depth, current_depth)
+           SOME _ => TVar id
          | NONE => TLiteral (Id id))
-      | fromSexp' (Ast.Sexp exps, current_depth) = let
-          (*
-           * Sequences must always be nested in a pattern, but they
-           * may be flattened in a template. Eg, the following
-           * pattern:
-           *   ((a ...) ...)
-           * could have this template:
-           *   (a ... ...)
-           * represented as:
-           *   TMany (TMany (TOne (Id.id "a")))
-           * We cannot be sure a's use in the template is legal until
-           * we know how many sequences it's bound by. Therefore, as
-           * we parse the each expression in a list, we delay its
-           * evaluation until we know how many sequences it's bound
-           * by. *)
+      | Ast.Sexp exps => let
+          (* Pull expressions from the list one at a time.  Unless the
+           * expression is an ellipsis, parse it and wrap it in a
+           * "TSingleton".  Continue down the list consuming as many
+           * ellipses as possible. For each ellipsis, wrap the item
+           * with a "TSequence". Once a non-ellipsis is encountered,
+           * repeat the process with the new expression. *)
+          fun toItem exp = TSingleton (fromSexp binderDepths exp)
 
-          (* Don't parse this template until we know how many
-           * sequences it's bound by in this list. *)
-          fun delay exp depth = TSingleton (fromSexp' (exp, current_depth + depth))
-          (* For each ellipsis following the expression, wrap its
-           * template in a "TMany", and increment the depth of the
-           * environment in which it will be evaluated. *)
-          fun delayAgain delayedItem depth = TSequence (delayedItem (depth + 1))
-          fun eval delayedItem = delayedItem 0
-
-          (* Pull expressions from the list one at a time... *)
-          (* Unless the expression is an ellipsis, wrap it with a
-           * "TOne", but defer parsing it. Continue down the list
-           * consuming as many ellipses as possible. For each
-           * ellipsis, wrap the deferred expression. Once a
-           * non-ellipsis is encountered, parse the deferred
-           * expression, and repeat the process with the new
-           * expression. *)
-          (* Process the list of expressions from left to right. For
-           * each expression, delay it, and continue to consume as
-           * many "..."s as possible. For each "...", wrap the
-           * expression in another delay previous expression in a
-           * "Many" template. When there are no more "..."s, parse the
-           * expression at the known binding depth), and continue on
-           * down the list. *)
-          fun itemsFromSexps (SOME delayedItem, nextExp :: rest) =
+          fun itemsFromSexps (SOME prevItem, nextExp :: rest) =
               if isEllipsis nextExp then
-                itemsFromSexps (SOME (delayAgain delayedItem), rest)
+                itemsFromSexps (SOME (TSequence prevItem), rest)
               else
-                eval delayedItem :: itemsFromSexps (SOME (delay nextExp), rest)
+                prevItem :: itemsFromSexps (SOME (toItem nextExp), rest)
             | itemsFromSexps (NONE, nextExp :: rest) =
               if isEllipsis nextExp then
-                raise Fail "'...' must follow a template."
+                raise Fail "'...' must be preceeded by a template."
               else
-                itemsFromSexps (SOME (delay nextExp), rest)
-            | itemsFromSexps (SOME delayedItem, []) = [eval delayedItem]
+                itemsFromSexps (SOME (toItem nextExp), rest)
+            | itemsFromSexps (SOME prevItem, []) = [prevItem]
             | itemsFromSexps (NONE, []) = []
         in
           TList (itemsFromSexps (NONE, exps))
         end
-  in
-    fromSexp' (ast, 0)
-  end
 
 end
