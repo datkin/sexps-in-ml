@@ -1,20 +1,28 @@
-(* Scheme macros may be defined using a simple yet powerful tool
+(**
+ * Scheme macros may be defined using a simple yet powerful tool
  * called "syntax-rules" which gives a language for matching and
- * transforming patterns of s-expressions. Patterns is a similar tool
- * for parsing syntax-rules style definitions from S-expressions to
- * generate rewrite rules, and then applying those rules. *)
+ * transforming patterns of s-expressions. Here are some tools for
+ * creating "syntax-rules"-style defintions, and using them to
+ * transform S-expressions.
+ *
+ * There are two component structures:
+ * - 'Pattern' for defining patterns, and using them to match
+ *    S-expressions.
+ * - 'Template' for defining templates for a pattern, and
+ *   transforming corresponding pattern matches to S-expressions.
+ *)
 structure Pattern = struct
 
-  (* Pattern elements that should be matched literally. *)
+  (* Syntax elements that should be matched literally. *)
   datatype literal = Id of Id.id
                    | Num of Ast.num
                    | String of string
 
   (**
    * A pattern is one of:
+   * - A literal string or number.
    * - An identifier, which may either be a literal or a binding
    *   variable.
-   * - Some other literal (number, string, ...).
    * - A list of patterns. At most one pattern inside a list may be a
    *   "sequence", to be matched repeatedly (zero or more times,
    *   greedily). A sequence is indicated by a pattern followed by an
@@ -28,9 +36,9 @@ structure Pattern = struct
    *   will match any list beginning with elements 1 2 3, with the
    *   sublist after the 3rd element bound to 'rest'.
    *)
-  datatype pattern = PList of pattern list * ptail
+  datatype pattern = PLiteral of literal
                    | PVar of Id.id
-                   | PLiteral of literal
+                   | PList of pattern list * ptail
        and ptail = PSeq of pattern * pattern list
                  | PRest of Id.id
                  | PEnd
@@ -38,7 +46,6 @@ structure Pattern = struct
   val ellipsis = Id.id "..."
   val dot = Id.id "."
 
-  (* A predicate for ellipses. *)
   fun isEllipsis (Ast.Id id) = id = ellipsis
     | isEllipsis _ = false
 
@@ -61,7 +68,7 @@ structure Pattern = struct
     | toSexp (PLiteral (String str)) = Ast.String str
 
   (**
-   * Creates a pattern value given it's sexp representation. All
+   * Create a pattern value given it's sexp representation. All
    * indentifiers in the pattern definition are treated as binders
    * unless they're given in the list of literals.
    *)
@@ -73,14 +80,14 @@ structure Pattern = struct
     fun toPattern form = fromSexp (form, literals)
 
     (**
-     * Consumes a list of sexp pattern represenations, and converts
-     * them into patterns to create a PList. The list of sexps is
-     * inspected two at a time, looking for a sequence ("x ...") or a
-     * dotted tail (". x"). Until a sequence is found, all patterns
-     * are accumulated in the second argument, and the third argument
-     * is NONE. Once a sequence has been found the third argument
-     * stores a tuple of the sequenced pattern, and all patterns in
-     * the list after the sequence.
+     * Consume a list of sexp pattern represenations, and convert them
+     * into patterns to create a PList. The list of sexps is inspected
+     * two at a time, looking for a sequence ("x ...") or a dotted
+     * tail (". x"). Until a sequence is found, all patterns are
+     * accumulated in the second argument, and the third argument is
+     * NONE. Once a sequence has been found the third argument stores
+     * a tuple of the sequenced pattern, and all patterns in the list
+     * after the sequence.
      *)
     fun plistFromSexps (exp1 :: exp2 :: rest, patterns, NONE) =
         if isDot exp1 then
@@ -146,12 +153,22 @@ structure Pattern = struct
     | getBinderDepths (PLiteral _, depths, depth) = depths
 
   (**
+   * Parse, validate, and analyze a pattern for a given S-expression.
+   *)
+  fun makePattern (sexp, literals) = let
+    val pattern = fromSexp (sexp, literals);
+    val binderDepths = getBinderDepths (pattern, Id.IdMap.empty, 0)
+  in
+    {pattern = pattern, binderDepths = binderDepths}
+  end
+
+  (**
    * A match instantiates a pattern, associating each binder with a
    * bound AST, and each sequence with a list of matches.
    *)
-  datatype match = MList of match list * mtail
+  datatype match = MLiteral of literal
                  | MVar of Id.id * Ast.exp
-                 | MLiteral of literal
+                 | MList of match list * mtail
        and mtail = MSeq of match list * match list
                  | MRest of Id.id * Ast.exp
                  | MEnd
@@ -167,7 +184,7 @@ structure Pattern = struct
   (**
    * Attempt to match the given pattern against the given
    * S-expression. Returns a match instantiating the pattern if
-   * successful, raises an exception otherwise.
+   * successful, otherwise raises an exception.
    *)
   fun match (PVar id) ast = MVar (id, ast)
     | match (pattern as PLiteral literal) ast =
