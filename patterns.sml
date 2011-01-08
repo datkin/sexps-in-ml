@@ -248,12 +248,6 @@ structure Template = struct
        and titem = TSequence of titem
                  | TSingleton of template
 
-  (* Generate an error for a template variable not nested within
-   * enough sequences. *)
-  fun shallowNestingError (id, required_depth, actual_depth) =
-      Fail (Id.name id ^ " must be nested in at least " ^ Int.toString
-            required_depth ^ " sequences, but it's nested in " ^
-            Int.toString actual_depth ^ " sequences.")
 
   (**
    * Create a template for a pattern, given the binding depths for
@@ -295,6 +289,18 @@ structure Template = struct
           TList (itemsFromSexps (NONE, exps))
         end
 
+  fun shallowNesting (id, requiredDepth, actualDepth) =
+      Fail (Id.name id ^ " must be nested in at least " ^ Int.toString
+            requiredDepth ^ " sequences, but it's nested in " ^
+            Int.toString actualDepth ^ " sequences.")
+
+  fun invalidVariable id =
+      Fail (Id.name id ^ " is not a valid bind variable.")
+
+  fun depthMismatch (deepestBinder, depth) =
+      Fail ("Deepest binders are " ^ (Int.toString deepestBinder) ^
+            ", but they are nested " ^ (Int.toString depth) ^ " deep.")
+
   (**
    * There are two properties of templates that must be validated.
    * (1) Every variable must be nested at least as deeply as it
@@ -316,12 +322,44 @@ structure Template = struct
    *   ((a b) ...)
    *
    * Property (1) is checked by comparing every variable's binding
-   * depth with the depth of it's appearance in the template.
+   * depth with the depth of its appearance in the template.
    *
-   * Property (2) is checked by ???
+   * Property (2) is checked by comparing the deepest binding depth of
+   * any variable in the sequence, with the depth of the sequence.
+   *
+   * The nesting depth is propogated down the call stack, and the
+   * deepest binder depth for each sequence is returned.
    *)
-  fun validate (template, binders, depth) = NONE
+  fun validate (template, binderDepths, currentDepth) =
+      case template of
+        TLiteral _ => 0
+      | TVar id => let
+          val requiredDepth = case Id.IdMap.find (binderDepths, id) of
+                                SOME depth => depth
+                              | NONE => raise invalidVariable id
+        in
+          if currentDepth < requiredDepth
+          then raise shallowNesting (id, requiredDepth, currentDepth)
+          else requiredDepth
+        end
+      | TList items => let
+          fun validateItem depth (TSequence item) = (validateItem (depth + 1) item) - 1
+            | validateItem depth (TSingleton template) = let
+                val deepest = validate (template, binderDepths, depth)
+              in
+                if deepest <> depth
+                then raise depthMismatch (deepest, depth)
+                else deepest
+              end
+        in
+          foldr Int.max 0 (map (validateItem currentDepth) items)
+        end
 
-  fun makeTemplate (sexp, binderDepths) = {template = fromSexp binderDepths sexp}
+  fun makeTemplate (sexp, binderDepths) = let
+    val template = fromSexp binderDepths sexp
+    val _ = validate (template, binderDepths, 0)
+  in
+    {template = template}
+  end
 
 end
