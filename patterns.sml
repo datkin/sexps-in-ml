@@ -466,3 +466,13 @@ structure Template = struct
           Ast.Sexp (Util.lift (expandItem bindings) items)
         end
 end
+
+structure SyntaxRule = struct
+  fun makeRule (patternExp, templateExp, literals) = let
+    val {pattern, binderDepths} = Pattern.makePattern (patternExp, literals)
+    val {template} = Template.makeTemplate (templateExp, binderDepths)
+  in
+    fn exp => Template.expand template
+                              (Pattern.matchToBindings (Pattern.match pattern exp))
+  end
+end
