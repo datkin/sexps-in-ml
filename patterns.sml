@@ -139,7 +139,7 @@ structure Pattern = struct
          NONE => Id.IdMap.insert (depths, id, depth)
        | SOME _ => raise Fail (Id.name id ^ " already defined in pattern."))
     | getBinderDepths (PList (patterns, tail), depths, depth) = let
-        val collectDepths = foldr (fn (pattern, depths') =>
+        val collectDepths = foldl (fn (pattern, depths') =>
                                       getBinderDepths (pattern, depths', depth))
         val depths' = collectDepths depths patterns
         val depths'' = case tail of
@@ -352,7 +352,7 @@ structure Template = struct
                 else deepest
               end
         in
-          foldr Int.max 0 (map (validateItem currentDepth) items)
+          foldl Int.max 0 (map (validateItem currentDepth) items)
         end
 
   fun makeTemplate (sexp, binderDepths) = let
