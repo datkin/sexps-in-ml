@@ -16,4 +16,6 @@ structure Util = struct
   fun splitTail n list = splitHead ((length list) - n) list
 
   fun max items = foldl Int.max 0 items
+
+  fun lift f list = List.concat (map f list)
 end

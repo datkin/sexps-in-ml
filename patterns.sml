@@ -416,4 +416,53 @@ structure Template = struct
     {template = template}
   end
 
+  fun expand template (bindings : binding Id.IdMap.map) =
+      case template of
+        TLiteral (Num num) => Ast.Num num
+      | TLiteral (String str) => Ast.String str
+      | TLiteral (Id id) => Ast.Id id
+      | TVar id => (case Id.IdMap.find (bindings, id) of
+                      SOME (Binding exp) => exp
+                    | SOME (Nested _) => raise Fail (Id.name id ^ " too shallow?")
+                    | NONE => raise Fail ("Nothing bound for " ^ Id.name id))
+      | TList items => let
+          fun select n (Nested bindings) =
+              (SOME (List.nth (bindings, n))
+               handle Subscript => NONE)
+            | select _ binding = SOME binding
+
+          (* Replace each Nested binding in the map with it's n'th
+           * element. If there is no n'th element, remove it from the
+           * map. *)
+          fun unwrap bindings n = Id.IdMap.mapPartial (select n) bindings
+
+          (* The number of expansions to do for a sequence is
+           * determined by whichever iterated variable (from ids) has
+           * the most bindings at the current level of expansion. All
+           * other variables at this level should be equally numerous,
+           * or should go unused. *)
+          fun iterations ids bindings = let
+            fun count id = case Id.IdMap.find (bindings, id) of
+                             SOME (Nested bindings') => length bindings'
+                           | _ => 0
+            val counts = Id.IdSet.listItems (Id.IdSet.map count ids)
+          in
+            Util.max counts
+          end
+
+          fun count ids (id, Nested bindings) =
+              if Id.IdSet.member (ids, id) then (length bindings) else 0
+            | count ids (id, Binding _) = 0
+
+          fun expandItem bindings (TSingleton template) = [expand template bindings]
+            | expandItem bindings (TSequence (item, ids)) =
+              let
+                val n = iterations ids bindings
+                val bindingsList = List.tabulate (n, (unwrap bindings))
+              in
+                Util.lift (fn f => f item) (map expandItem bindingsList)
+              end
+        in
+          Ast.Sexp (Util.lift (expandItem bindings) items)
+        end
 end
