@@ -243,7 +243,7 @@ structure Pattern = struct
             | appendBindings (_, _) = raise Fail "Can only append two nested bindings."
 
           (* Merge a list of bindings into one. *)
-          val merge = foldl (Id.IdMap.unionWith appendBindings) Id.IdMap.empty
+          val merge = foldr (Id.IdMap.unionWith appendBindings) Id.IdMap.empty
 
           (* Wrap all the bindings in a map in "Nested". *)
           val wrap = Id.IdMap.map (fn b => Nested [b])
