@@ -219,6 +219,50 @@ structure Pattern = struct
         MList (matchList (patterns, headExps), matchTail (tail, tailExps))
       end
     | match pattern ast = raise Fail (diffString (pattern, ast))
+
+  (**
+   * A binding represents all the S-expressions that a bind variable
+   * matched for some pattern.  An un-nested variable would yield a
+   * lone Binding. A variable nested in n times would yield a full
+   * tree of depth n, with Bindings at the leaves.
+   *)
+  datatype binding = Binding of Ast.exp
+                   | Nested of binding list
+
+  (**
+   * Convert a match structure to a map of bindings for each variable
+   * in the match.
+   *)
+  fun matchToBindings match =
+      case match of
+        MLiteral _ => Id.IdMap.empty
+      | MVar (id, exp) => Id.IdMap.singleton (id, Binding exp)
+      | MList (matches, tail) => let
+          (* Append two nested bindings. *)
+          fun appendBindings (Nested b1, Nested b2) = Nested (b1 @ b2)
+            | appendBindings (_, _) = raise Fail "Can only append two nested bindings."
+
+          (* Merge a list of bindings into one. *)
+          val merge = foldl (Id.IdMap.unionWith appendBindings) Id.IdMap.empty
+
+          (* Wrap all the bindings in a map in "Nested". *)
+          val wrap = Id.IdMap.map (fn b => Nested [b])
+
+          val bindings = merge (map matchToBindings matches)
+          val bindings' =
+              case tail of
+                MEnd => Id.IdMap.empty
+              | MRest (id, exp) => Id.IdMap.singleton (id, Binding exp)
+              | MSeq (seqMatches, tailMatches) => let
+                  val seqBindings = merge (map (wrap o matchToBindings) seqMatches)
+                  val tailBindings = merge (map matchToBindings tailMatches)
+                in
+                  merge [seqBindings, tailBindings]
+                end
+        in
+          merge [bindings, bindings']
+        end
+
 end
 
 structure Template = struct
