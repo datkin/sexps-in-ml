@@ -397,17 +397,18 @@ structure Template = struct
           else requiredDepth
         end
       | TList items => let
-          fun validateItem depth (TSequence (item, _)) = (validateItem (depth + 1) item) - 1
-            | validateItem depth (TSingleton template) = let
-                val deepest = validate (template, binderDepths, depth)
-              in
+          fun validateItem depth (TSingleton template) = validate (template, binderDepths, depth)
+            | validateItem depth (TSequence (item, _)) =
+              let val deepest = (validateItem (depth + 1) item) - 1 in
                 if deepest <> depth
-                then raise depthMismatch (deepest, depth)
+                then raise depthMismatch (deepest + 1, depth + 1)
                 else deepest
               end
         in
           Util.max (map (validateItem currentDepth) items)
         end
+
+  (* Test cases: (a b ...) -> ((a b) ...), ((a ...) (b ...)) -> (((a) b) ...) *)
 
   fun makeTemplate (sexp, binderDepths) = let
     val (template, _) = fromSexp binderDepths sexp
@@ -476,3 +477,9 @@ structure SyntaxRule = struct
                               (Pattern.matchToBindings (Pattern.match pattern exp))
   end
 end
+
+(* Testing:
+val [pattern, template, in] = (Parser.getAst (Parser.parseString "((a ...) (b ...)) ((a b) ... ...) ..."));
+val t = SyntaxRule.makeRule (pattern, template, []);
+Ast.toString (t in);
+ *)
