@@ -284,30 +284,33 @@ structure Template = struct
   * Thus, every template in a list is wrapped in a "TSingleton" item,
   * and for every sequence immediately following the template, the
   * singleton is wrapped in a "TSequence". So the example above would
-  * be:
+  * be (ignoring the sets):
   *   TList [TSingleton (Id.id "a"),
   *          TSequence (TSingleton (Id.id "b")),
   *          TSequence (TSequence (TSingleton (Id.id "c")))]
+  *
+  * Each sequence is stored with a list of the variables that appear
+  * in that sequence.
   *)
-       and titem = TSequence of titem
+       and titem = TSequence of titem * Id.IdSet.set
                  | TSingleton of template
-
 
   (**
    * Create a template for a pattern, given the binding depths for
    * variables in the pattern, and an s-expression representation of
-   * the template.
+   * the template. Also tracks a list of the variables used in the
+   * template, used when constructing sequences.
    *)
   fun fromSexp binderDepths ast =
       case ast of
-        Ast.Num num => TLiteral (Num num)
-      | Ast.String str => TLiteral (String str)
+        Ast.Num num => (TLiteral (Num num), Id.IdSet.empty)
+      | Ast.String str => (TLiteral (String str), Id.IdSet.empty)
       | Ast.Id id =>
         (* If an identifier appears in the binder depths map, it's a
          * variable, otherwise it's a literal. *)
         (case Id.IdMap.find (binderDepths, id) of
-           SOME _ => TVar id
-         | NONE => TLiteral (Id id))
+           SOME _ => (TVar id, Id.IdSet.singleton id)
+         | NONE => (TLiteral (Id id), Id.IdSet.empty))
       | Ast.Sexp exps => let
           (* Pull expressions from the list one at a time.  Unless the
            * expression is an ellipsis, parse it and wrap it in a
@@ -315,11 +318,15 @@ structure Template = struct
            * ellipses as possible. For each ellipsis, wrap the item
            * with a "TSequence". Once a non-ellipsis is encountered,
            * repeat the process with the new expression. *)
-          fun toItem exp = TSingleton (fromSexp binderDepths exp)
+          fun toItem exp = let
+            val (item, ids) = fromSexp binderDepths exp
+          in (TSingleton item, ids) end
+
+          fun seq (item, ids) = (TSequence (item, ids), ids)
 
           fun itemsFromSexps (SOME prevItem, nextExp :: rest) =
               if isEllipsis nextExp then
-                itemsFromSexps (SOME (TSequence prevItem), rest)
+                itemsFromSexps (SOME (seq prevItem), rest)
               else
                 prevItem :: itemsFromSexps (SOME (toItem nextExp), rest)
             | itemsFromSexps (NONE, nextExp :: rest) =
@@ -329,8 +336,11 @@ structure Template = struct
                 itemsFromSexps (SOME (toItem nextExp), rest)
             | itemsFromSexps (SOME prevItem, []) = [prevItem]
             | itemsFromSexps (NONE, []) = []
+
+          val (items, idsList) = ListPair.unzip (itemsFromSexps (NONE, exps))
+          val ids = foldl Id.IdSet.union Id.IdSet.empty idsList
         in
-          TList (itemsFromSexps (NONE, exps))
+          (TList items, ids)
         end
 
   fun shallowNesting (id, requiredDepth, actualDepth) =
@@ -387,7 +397,7 @@ structure Template = struct
           else requiredDepth
         end
       | TList items => let
-          fun validateItem depth (TSequence item) = (validateItem (depth + 1) item) - 1
+          fun validateItem depth (TSequence (item, _)) = (validateItem (depth + 1) item) - 1
             | validateItem depth (TSingleton template) = let
                 val deepest = validate (template, binderDepths, depth)
               in
@@ -400,7 +410,7 @@ structure Template = struct
         end
 
   fun makeTemplate (sexp, binderDepths) = let
-    val template = fromSexp binderDepths sexp
+    val (template, _) = fromSexp binderDepths sexp
     val _ = validate (template, binderDepths, 0)
   in
     {template = template}
