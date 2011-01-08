@@ -406,7 +406,7 @@ structure Template = struct
                 else deepest
               end
         in
-          foldl Int.max 0 (map (validateItem currentDepth) items)
+          Util.max (map (validateItem currentDepth) items)
         end
 
   fun makeTemplate (sexp, binderDepths) = let

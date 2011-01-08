@@ -14,4 +14,6 @@ structure Util = struct
 
   (* Split a list n elements from the tail. *)
   fun splitTail n list = splitHead ((length list) - n) list
+
+  fun max items = foldl Int.max 0 items
 end
