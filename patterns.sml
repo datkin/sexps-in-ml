@@ -222,9 +222,9 @@ structure Pattern = struct
 
   (**
    * A binding represents all the S-expressions that a bind variable
-   * matched for some pattern.  An un-nested variable would yield a
-   * lone Binding. A variable nested in n times would yield a full
-   * tree of depth n, with Bindings at the leaves.
+   * matched for some pattern.  An un-nested variable yields a lone
+   * Binding. A variable nested in n times yields a full tree of depth
+   * n, with Bindings at the leaves.
    *)
   datatype binding = Binding of Ast.exp
                    | Nested of binding list
