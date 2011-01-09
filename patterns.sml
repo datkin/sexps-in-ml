@@ -5,14 +5,16 @@
  * creating "syntax-rules"-style defintions, and using them to
  * transform S-expressions.
  *
- * There are two component structures:
+ * There are three component structures:
  * - 'Pattern' for defining patterns, and using them to match
  *    S-expressions.
  * - 'Template' for defining templates for a pattern, and
  *   transforming corresponding pattern matches to S-expressions.
+ * - 'SyntaxRule' for creating rewrite functions from patterns
+ *   and templates.
  *)
 structure Pattern = struct
-
+n
   (* Syntax elements that should be matched literally. *)
   datatype literal = Id of Id.id
                    | Num of Ast.num
@@ -399,10 +401,12 @@ structure Template = struct
       | TList items => let
           fun validateItem depth (TSingleton template) = validate (template, binderDepths, depth)
             | validateItem depth (TSequence (item, _)) =
-              let val deepest = (validateItem (depth + 1) item) - 1 in
+              let
+                val depth = depth + 1
+                val deepest = (validateItem depth item) in
                 if deepest <> depth
-                then raise depthMismatch (deepest + 1, depth + 1)
-                else deepest
+                then raise depthMismatch (deepest, depth)
+                else deepest - 1
               end
         in
           Util.max (map (validateItem currentDepth) items)
