@@ -1,22 +1,13 @@
 structure Test = struct
-  datatype test = Test of string * (unit -> unit)
+  datatype test = Test of string * (unit -> bool)
 end
 
 functor TestRunner (val tests: Test.test list val continueOnFailure: bool) = struct
   open Test
 
-  fun handleError error =
-      if continueOnFailure then false
-      else raise error
-
-  fun statusToString success =
-      if success then "passed"
-      else "failed"
-
   fun run (Test (name, test)) = let
     val _ = print ("Testing '" ^ name ^ "'... ")
-    val successful = ((test ();
-                       true)
+    val successful = (test ()
                       handle error => (print "failed.\n";
                                        if continueOnFailure then false
                                        else raise error))

@@ -3,7 +3,7 @@ struct
   open Test
 
   fun assertEqual (expected: string, actual: string) =
-      if expected = actual then ()
+      if expected = actual then true
       else raise Fail ("Expected: " ^ expected ^ ", got " ^ actual ^ "\n")
 
   fun roundtrip str = let
@@ -12,23 +12,15 @@ struct
     assertEqual (str, Ast.toString exp)
   end
 
+  val all = List.all;
+
   val tests = [
       Test ("floats",
-         fn () => (roundtrip "1.0";
-                   roundtrip "100.0";
-                   roundtrip "100.00";
-                   roundtrip "0.1";
-                   roundtrip "0.010";
-                   roundtrip "3.14159")),
+         fn _ => all roundtrip ["1.0", "100.0",  "100.00", "0.1", "0.010", "3.14159"]),
       Test ("rationals",
-         fn () => (roundtrip "1/2";
-                   roundtrip "123/425" (*;
-                   roundtrip "-1/3" *))),
+         fn _ => all roundtrip ["1/2", "123/425" (*, "-1/3" *)]),
       Test ("symbols",
-         fn () => (roundtrip "a";
-                   roundtrip "a'";
-                   roundtrip "abc";
-                   roundtrip "abc-123"))
+         fn _ => all roundtrip ["a", "a'", "abc", "abc-123"])
   ];
 
   val continueOnFailure = false;
