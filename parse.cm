@@ -3,6 +3,8 @@ Group is
 sexp.grm : shell (target: sexp.grm.sml /usr/bin/ml-antlr %s)
 sexp.lex : shell (target: sexp.lex.sml /usr/bin/ml-ulex %s)
 parser.sml
+test.sml
+parse-test.sml
 base.cm
 $/basis.cm
 $/smlnj-lib.cm
