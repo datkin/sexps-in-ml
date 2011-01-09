@@ -1,8 +1,7 @@
 structure Parser = struct
   structure SexpParser = SexpParseFn(Lexer)
 
-  datatype result = Success of Ast.exp list
-                  | Failure
+  exception ParseFailure of (SexpTokens.token AntlrRepair.repair) list
 
   fun parse input = let
     val sourceMap = AntlrStreamPos.mkSourcemap ()
@@ -12,8 +11,8 @@ structure Parser = struct
     val _ = TextIO.closeIn input
   in
     case (maybeAst, errors) of
-      (SOME ast, []) => Success ast
-    | _ => Failure
+      (SOME ast, []) => ast
+    | _ => raise ParseFailure errors
   end
 
   fun parseFile filename =
@@ -23,24 +22,25 @@ structure Parser = struct
       parse (TextIO.openString str)
 
   (* A super naive reader: read input until a successful parse occurs. *)
-  fun read () = let
+  fun parseStdIn () = let
     fun loop str =
         let
           val str' = str ^ (valOf (TextIO.inputLine TextIO.stdIn))
-          val result = parseString str'
         in
-          case result of
-            Success _ => result
-          | Failure => loop str'
+          parseString str'
+          handle ParseFailure _ => loop str'
         end
   in
     loop ""
   end
 
   fun repl () : unit =
-      (read (); repl ())
+      (parseStdIn (); repl ())
+        (* A convenience method for getting a single expression. *)
 
-  fun getAst (Success ast) = ast
-    | getAst _ = raise Fail "Parse failed"
-
+  fun readExp string =
+      case parseString string of
+        [exp] => exp
+      | [] => raise Fail "Required 1 expression, got none."
+      | exps => raise Fail ("Required 1 expression, got " ^ Int.toString (length exps))
 end
