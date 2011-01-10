@@ -63,7 +63,15 @@ structure TemplateTest = TestRunner(struct
          fn _ => expansion "(1 \"foo\" (x))" "(2 \"bar\" x)" "(1 \"foo\" (a))" "(2 \"bar\" a)"),
 
       Test ("dot expansion",
-         fn _ => expansion "(. b)" "(x b)" "(1 2 3)" "(x (1 2 3))")
+         fn _ => expansion "(. b)" "(x b)" "(1 2 3)" "(x (1 2 3))"),
+
+      Test ("empty sequence expansion",
+         fn _ => expansion "((a ...) (b ...) ...)"
+                           "((a b) ... ...)"
+                           "((1 2 3) () (x) (y z))"
+                           "((1 x) (2 y) (2 z))"
+                           (* "((2 x) (3 y) (3 z))" *))
+
   ]
 
   val continueOnFailure = false
