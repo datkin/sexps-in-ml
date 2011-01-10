@@ -18,8 +18,16 @@ structure UtilTest = TestRunner(struct
       Test ("split tail all",
          fn _ => splitTail 3 [1, 2, 3] = ([], [1, 2, 3])),
       Test ("split tail mid",
-         fn _ => splitTail 2 [1, 2, 3, 4, 5] = ([1, 2, 3], [4, 5]))
-
+         fn _ => splitTail 2 [1, 2, 3, 4, 5] = ([1, 2, 3], [4, 5])),
+      Test ("max",
+         fn _ => max [1, 4, 5, ~3, 2] = 5),
+      Test ("lift",
+         fn _ => let
+              fun f n = List.tabulate (n, (fn n' => n'))
+              val lifted = lift f [1, 2, 3]
+            in
+              lifted = [0, 0, 1, 0, 1, 2]
+            end)
   ];
 
   val continueOnFailure = false
