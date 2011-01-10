@@ -1,6 +1,7 @@
 Library
   structure Ast
   structure Id
+  structure BaseTest
 is
   ast.sml
   id.sml
