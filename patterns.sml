@@ -14,7 +14,7 @@
  *   and templates.
  *)
 structure Pattern = struct
-n
+
   (* Syntax elements that should be matched literally. *)
   datatype literal = Id of Id.id
                    | Num of Ast.num
