@@ -7,7 +7,7 @@ packages are 'smlnj', 'libsmlnj-smlnj' and 'ml-lpt'. If you're missing the
 language processing tools, you can copy the pre-generated lexer and parser from
 the 'generated' directory:
 
-  $ cp -r generated/ .
+  $ cp generated/* .
 
 To build:
 
