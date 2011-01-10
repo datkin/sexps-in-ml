@@ -1,4 +1,21 @@
 [S-expressions] [1] (or sexps) are the minimal syntax of Lisp and Scheme. Here
 are some tools for parsing and manipulating them in SML.
 
-  [1]: http://en.wikipedia.org/wiki/S-expression "S-expressions"
+The code has been tested on SML/NJ v110.69. To generate the lexer and parser
+you'll need SML/NJ's language processing tools [2]. On Ubuntu, the required
+packages are 'smlnj', 'libsmlnj-smlnj' and 'ml-lpt'. If you're missing the
+language processing tools, you can copy the pre-generated lexer and parser from
+the 'generated' directory:
+
+  $ cp -r generated/ .
+
+To build:
+
+  $ smlnj
+  Standard ML of New Jersey v110.69 [built: Mon Jun  8 14:15:08 2009]
+  - CM.make "util.cm";
+
+See the comments in src/syntaxrule.sml for more information on the utilities.
+
+[1] http://en.wikipedia.org/wiki/S-expression
+[2] http://smlnj-gforge.cs.uchicago.edu/projects/ml-lpt/

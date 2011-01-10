@@ -2,16 +2,28 @@
  * Scheme macros may be defined using a simple yet powerful tool
  * called "syntax-rules" which gives a language for matching and
  * transforming patterns of s-expressions. Here are some tools for
- * creating "syntax-rules"-style defintions, and using them to
- * transform S-expressions.
+ * creating "syntax-rules"-style definitions, and using them to
+ * transform s-expressions.
  *
  * There are three component structures:
  * - 'Pattern' for defining patterns, and using them to match
- *    S-expressions.
+ *    s-expressions.
  * - 'Template' for defining templates for a pattern, and
- *   transforming corresponding pattern matches to S-expressions.
+ *   transforming corresponding pattern matches to s-expressions.
  * - 'SyntaxRule' for creating rewrite functions from patterns
  *   and templates.
+ *
+ * To play with this on the repl, first parse a pattern and template
+ * expression:
+ *   - val [pattern, template] = (map Parser.readExp ["(a ...)", "((a) ...)"]);
+ *
+ * Then, use them to create a transformer function (the empty list
+ * indicates that none of the symbols in the pattern should be treated
+ * as literal):
+ *   - val f = SyntaxRule.makeRule (pattern, template, []);
+ *
+ * Finally, apply the transform to a sample expression:
+ *   - Ast.toString (f (Parser.readExp "(1 2 3)"));
  *)
 structure Pattern = struct
 
@@ -71,7 +83,7 @@ structure Pattern = struct
 
   (**
    * Create a pattern value given it's sexp representation. All
-   * indentifiers in the pattern definition are treated as binders
+   * identifiers in the pattern definition are treated as binders
    * unless they're given in the list of literals.
    *)
   fun fromSexp (form, literals) = let
@@ -82,7 +94,7 @@ structure Pattern = struct
     fun toPattern form = fromSexp (form, literals)
 
     (**
-     * Consume a list of sexp pattern represenations, and convert them
+     * Consume a list of sexp pattern representations, and convert them
      * into patterns to create a PList. The list of sexps is inspected
      * two at a time, looking for a sequence ("x ...") or a dotted
      * tail (". x"). Until a sequence is found, all patterns are
@@ -155,7 +167,7 @@ structure Pattern = struct
     | getBinderDepths (PLiteral _, depths, depth) = depths
 
   (**
-   * Parse, validate, and analyze a pattern for a given S-expression.
+   * Parse, validate, and analyze a pattern for a given s-expression.
    *)
   fun makePattern (sexp, literals) = let
     val pattern = fromSexp (sexp, literals);
@@ -185,7 +197,7 @@ structure Pattern = struct
 
   (**
    * Attempt to match the given pattern against the given
-   * S-expression. Returns a match instantiating the pattern if
+   * s-expression. Returns a match instantiating the pattern if
    * successful, otherwise raises an exception.
    *)
   fun match (PVar id) ast = MVar (id, ast)
@@ -223,7 +235,7 @@ structure Pattern = struct
     | match pattern ast = raise Fail (diffString (pattern, ast))
 
   (**
-   * A binding represents all the S-expressions that a bind variable
+   * A binding represents all the s-expressions that a bind variable
    * matched for some pattern.  An un-nested variable yields a lone
    * Binding. A variable nested in n times yields a full tree of depth
    * n, with Bindings at the leaves.
@@ -479,9 +491,3 @@ structure SyntaxRule = struct
                               (Pattern.matchToBindings (Pattern.match pattern exp))
   end
 end
-
-(* Testing:
-val [pattern, template, in] = (Parser.getAst (Parser.parseString "((a ...) (b ...)) ((a b) ... ...) ..."));
-val t = SyntaxRule.makeRule (pattern, template, []);
-Ast.toString (t in);
- *)

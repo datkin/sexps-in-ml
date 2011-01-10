@@ -1,0 +1,13 @@
+Library
+  structure Parser
+  structure ParseTest
+is
+  sexp.grm.sml
+  sexp.lex.sml
+  src/parser.sml
+  test/parse.sml
+  base.cm
+  test.cm
+  $/basis.cm
+  $/smlnj-lib.cm
+  $/ml-lpt-lib.cm
