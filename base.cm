@@ -3,8 +3,8 @@ Library
   structure Id
   structure BaseTest
 is
-  ast.sml
-  id.sml
+  src/ast.sml
+  src/id.sml
   test/base.sml
   test.cm
   $/basis.cm

@@ -7,8 +7,8 @@ Library
   structure TemplateTest
   structure SyntaxRule
 is
-  util.sml
-  syntaxrule.sml
+  src/util.sml
+  src/syntaxrule.sml
   test/pattern.sml
   test/template.sml
   test/util.sml

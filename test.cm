@@ -2,5 +2,5 @@ Library
   structure Test
   functor TestRunner
 is
-  test.sml
+  src/test.sml
   $/basis.cm
