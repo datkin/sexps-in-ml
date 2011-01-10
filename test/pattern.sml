@@ -41,6 +41,14 @@ structure PatternTest = TestRunner(struct
       Test ("dotted tail",
          fn _ => fromSexp (readExp "(. b)", []) = PList ([], PRest b)),
 
+      Test ("illegal sequence",
+         (* fn _ => (fromSexp (readExp "(a ... ...)", []); false) handle _ => true), *)
+         fn _ => (fromSexp (readExp "(a ... b ...)", []); false) handle _ => true),
+      Test ("illegal dot following sequnce",
+         fn _ => (fromSexp (readExp "(a ... . b)", []); false) handle _ => true),
+      Test ("illegal multiple binders after dot",
+         fn _ => (fromSexp (readExp "(. b c)", []); false) handle _ => true),
+
       Test ("binder depths",
          fn _ => let
               val pattern = fromSexp (readExp "(a (b) c ... (((d ...) ...) ...))", [])
@@ -63,6 +71,7 @@ structure PatternTest = TestRunner(struct
       Test ("tail match",
          fn _ => (doMatch ("(. b)", "(1 2 3)"); true)),
 
+      (* Check the outcomes of the matches *)
       Test ("no bindings",
          fn _ => mapsEqual (matchToBindings (doMatch ("(1)", "(1)")),
                             Id.IdMap.empty)),
