@@ -4,11 +4,13 @@ Library
   structure Pattern
   structure PatternTest
   structure Template
+  structure TemplateTest
   structure SyntaxRule
 is
   util.sml
   syntaxrule.sml
   test/pattern.sml
+  test/template.sml
   test/util.sml
   base.cm
   test.cm

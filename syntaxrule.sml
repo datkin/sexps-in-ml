@@ -412,8 +412,6 @@ structure Template = struct
           Util.max (map (validateItem currentDepth) items)
         end
 
-  (* Test cases: (a b ...) -> ((a b) ...), ((a ...) (b ...)) -> (((a) b) ...) *)
-
   fun makeTemplate (sexp, binderDepths) = let
     val (template, _) = fromSexp binderDepths sexp
     val _ = validate (template, binderDepths, 0)
