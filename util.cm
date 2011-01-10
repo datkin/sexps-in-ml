@@ -1,7 +1,11 @@
-Group is
-
-base.cm
-parse.cm
-util.sml
-patterns.sml
-$/basis.cm
+Library
+  structure Util
+  structure Pattern
+  structure Template
+  structure SyntaxRule
+is
+  util.sml
+  syntaxrule.sml
+  base.cm
+  parse.cm
+  $/basis.cm

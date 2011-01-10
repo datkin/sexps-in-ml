@@ -1,8 +1,10 @@
-Group is
-
-ast.sml
-id.sml
-test.cm
-base-test.sml
-$/basis.cm
-$/smlnj-lib.cm
+Library
+  structure Ast
+  structure Id
+is
+  ast.sml
+  id.sml
+  test/base.sml
+  test.cm
+  $/basis.cm
+  $/smlnj-lib.cm
