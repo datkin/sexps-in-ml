@@ -12,10 +12,10 @@
  * single quote: \039
  * comma: \044
  * backtick: \096 *)
-%let reserved = [\034\039\044\096]
+%let reserved = [\034\039\044\096];
 
 (* Legal string characters: all printable ascii characters, except double quote and newline. *)
-%let string = [\032\033\035-\126]
+%let string = [\032\033\035-\126];
 
 %defs (
   open SexpTokens;

@@ -1,5 +1,4 @@
-structure ParseTest = TestRunner(
-struct
+structure ParseTest = TestRunner(struct
   open Test
 
   fun assertEqual (expected: string, actual: string) =
