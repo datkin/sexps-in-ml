@@ -37,6 +37,6 @@ structure Ast = struct
 
   fun toString (Id id) = Id.name id
     | toString (Num num) = numToString num
-    | toString (String str) = "\"" ^ (String.toCString str) ^ "\""
+    | toString (String str) = "\"" ^ str ^ "\""
     | toString (Sexp exps) = "(" ^ (String.concatWith " " (map toString exps)) ^ ")"
 end
